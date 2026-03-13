@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appli — Job Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14; --surface: #13161e; --surface2: #1a1e29;
+      --border: #252936; --border2: #2e3448;
+      --text: #e8eaf0; --text2: #8b92a8; --text3: #555d75;
+      --accent: #4f7cff; --accent2: #2952e3; --accent-glow: rgba(79,124,255,0.18);
+      --green: #34d399; --red: #f87171;
+      --row-hover: #161a25; --row-sel: #161e35;
+      --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+      --radius: 10px; --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* Header */
+    header { display: flex; align-items: center; justify-content: space-between; padding: 0 32px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+    .logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 0 16px var(--accent-glow); }
+    .badge { font-family: var(--mono); font-size: 12px; color: var(--text2); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
+
+    /* Toolbar */
+    .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 32px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 12px; }
+    .toolbar-left { display: flex; align-items: center; gap: 10px; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: var(--radius); font-family: var(--font); font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; outline: none; white-space: nowrap; }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(79,124,255,0.35); }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+    .btn-danger { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
+    .btn-danger:hover { background: rgba(248,113,113,0.2); }
+
+    /* Sort */
+    .sort-select { appearance: none; background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 8px 32px 8px 12px; font-family: var(--font); font-size: 13.5px; cursor: pointer; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b92a8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+    .sort-select:focus { border-color: var(--accent); }
+
+    /* Bulk bar */
+    .bulk-bar { display: none; align-items: center; gap: 10px; padding: 10px 32px; background: var(--row-sel); border-bottom: 1px solid var(--border2); }
+    .bulk-bar.visible { display: flex; }
+
+    /* Table */
+    .table-wrap { flex: 1; overflow-x: auto; padding: 0 0 40px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    col.c-chk  { width: 48px; }
+    col.c-date { width: 130px; }
+    col.c-titl { width: 200px; }
+    col.c-comp { width: 165px; }
+    col.c-desc { width: auto; }
+    col.c-url  { width: 145px; }
+    col.c-res  { width: 160px; }
+    thead th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); border-bottom: 1px solid var(--border); background: var(--surface); z-index: 10; white-space: nowrap; }
+    thead th:first-child { padding-left: 20px; }
+    thead th:last-child  { padding-right: 20px; }
+    tbody td:last-child  { padding-right: 20px; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:hover { background: var(--row-hover); }
+    tbody tr.sel { background: var(--row-sel); }
+    tbody td { padding: 13px 14px; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+    tbody td:first-child { padding-left: 20px; }
+    .cell-date { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+    .cell-title { font-weight: 500; color: var(--text); }
+    .cell-desc { color: var(--text2); font-size: 13px; }
+    .company-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 3px 9px; font-size: 12.5px; font-weight: 500; max-width: 145px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    .url-link { color: var(--accent); text-decoration: none; font-size: 12.5px; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .url-link:hover { text-decoration: underline; }
+    .resume-btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(79,124,255,0.1); color: var(--accent); border: 1px solid rgba(79,124,255,0.25); border-radius: 7px; padding: 5px 11px; font-size: 12px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all 0.15s; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .resume-btn:hover { background: rgba(79,124,255,0.2); transform: translateY(-1px); }
+    .no-resume { color: var(--text3); font-size: 12px; }
+    input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 80px 20px; color: var(--text3); }
+    .empty h3 { font-size: 18px; color: var(--text2); margin-bottom: 8px; }
+    .empty p { margin-bottom: 24px; }
+
+    /* Modal */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; width: 560px; max-width: 95vw; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+    .modal.wide { width: 90vw; max-width: 1100px; height: 90vh; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .modal-title { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
+    .modal-body.no-pad { padding: 0; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .close-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px; border-radius: 6px; }
+    .close-btn:hover { color: var(--text); }
+
+    /* Form */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .full { grid-column: 1 / -1; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); }
+    input[type="text"], input[type="url"], input[type="datetime-local"], textarea {
+      background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text); font-family: var(--font); font-size: 13.5px;
+      padding: 9px 12px; outline: none; width: 100%; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    textarea { resize: vertical; min-height: 80px; }
+    .file-drop { border: 2px dashed var(--border2); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; }
+    .file-drop:hover, .file-drop.over { border-color: var(--accent); background: var(--accent-glow); }
+    .file-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .file-chosen { display: none; align-items: center; gap: 8px; margin-top: 8px; background: rgba(79,124,255,0.1); border: 1px solid rgba(79,124,255,0.25); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; color: var(--accent); }
+
+    /* PDF iframe */
+    .pdf-frame { width: 100%; height: calc(90vh - 70px); border: none; border-radius: 0 0 14px 14px; display: block; }
+
+    /* Toast */
+    .toast-wrap { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+    .toast { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 16px; font-size: 13.5px; box-shadow: var(--shadow); animation: tIn 0.25s ease; max-width: 340px; color: var(--text); }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error   { border-left: 3px solid var(--red); }
+    .toast.info    { border-left: 3px solid var(--accent); }
+    @keyframes tIn { from { opacity:0; transform: translateX(16px); } to { opacity:1; transform: translateX(0); } }
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+
+    .cell-desc { color: var(--text2); font-size: 13px; cursor: pointer; }
+    .cell-desc:hover { color: var(--text); text-decoration: underline dotted; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      Appli
+    </div>
+    <span class="badge" id="badge">— applications</span>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn btn-primary" id="addBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Application
+      </button>
+      <select class="sort-select" id="sortSelect">
+        <option value="newest">Sort: Newest</option>
+        <option value="oldest">Sort: Oldest</option>
+        <option value="company">Sort: Company A–Z</option>
+      </select>
+    </div>
+    <span id="loadingTxt" style="font-size:12px;color:var(--text3);display:none;">Loading…</span>
+  </div>
+
+  <div class="bulk-bar" id="bulkBar">
+    <span id="bulkCount" style="font-size:13px;color:var(--text2);">0 selected</span>
+    <button class="btn btn-danger" id="deleteBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Delete Selected
+    </button>
+    <button class="btn btn-ghost" id="cancelSelBtn">Cancel</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="mainTable" style="display:none;">
+      <colgroup>
+        <col class="c-chk"/><col class="c-date"/><col class="c-titl"/>
+        <col class="c-comp"/><col class="c-desc"/><col class="c-url"/><col class="c-res"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selAll" /></th>
+          <th>Date</th><th>Job Title</th><th>Company</th>
+          <th>Description</th><th>URL</th><th>Resume</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="emptyState" style="display:none;">
+      <div style="font-size:48px;margin-bottom:16px;opacity:0.4;">📋</div>
+      <h3>No applications yet</h3>
+      <p>Start tracking your job search.</p>
+      <button class="btn btn-primary" id="addBtn2">Add Application</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f7cff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        New Application
+      </div>
+      <button class="close-btn" id="closeAdd">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>Job Title *</label>
+          <input type="text" id="f_title" placeholder="e.g. Senior Engineer" />
+        </div>
+        <div class="field">
+          <label>Company *</label>
+          <input type="text" id="f_company" placeholder="e.g. Acme Corp" />
+        </div>
+        <div class="field">
+          <label>Date Applied</label>
+          <input type="datetime-local" id="f_date" />
+        </div>
+        <div class="field">
+          <label>Job URL</label>
+          <input type="url" id="f_url" placeholder="https://..." />
+        </div>
+        <div class="field full">
+          <label>Job Description</label>
+          <textarea id="f_desc" placeholder="Paste or summarize the job description…" rows="3"></textarea>
+        </div>
+        <div class="field full">
+          <label>Resume (PDF)</label>
+          <div class="file-drop" id="fileDrop">
+            <input type="file" id="f_resume" accept=".pdf" />
+            <div style="font-size:22px;margin-bottom:6px;">📄</div>
+            <div style="font-size:13px;color:var(--text2);">Drop PDF here or <span style="color:var(--accent);font-weight:500;">browse</span></div>
+          </div>
+          <div class="file-chosen" id="fileChosen">
+            <span>📄</span><span id="fileName"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelAdd">Cancel</button>
+      <button class="btn btn-primary" id="submitBtn">Add Application</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="descOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Job Description</div>
+      <button class="close-btn" id="closeDesc">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="descText" style="color:var(--text2);font-size:14px;line-height:1.7;white-space:pre-wrap;"></p>
+    </div>
+  </div>
+</div>
+
+<!-- PDF Modal -->
+<div class="overlay" id="pdfOverlay">
+  <div class="modal wide">
+    <div class="modal-head">
+      <div class="modal-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4f7cff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span id="pdfTitle">Resume</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a id="pdfDownload" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;text-decoration:none;" download>Download</a>
+        <button class="close-btn" id="closePdf">✕</button>
+      </div>
+    </div>
+    <div class="modal-body no-pad">
+      <iframe id="pdfFrame" class="pdf-frame" src="" title="Resume"></iframe>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const API = '/api';
+  const palette = ['#4f7cff','#a78bfa','#34d399','#fbbf24','#f87171','#38bdf8','#fb923c','#e879f9'];
+  const colorMap = {};
+  let colorIdx = 0;
+
+  function companyColor(name) {
+    if (!colorMap[name]) colorMap[name] = palette[colorIdx++ % palette.length];
+    return colorMap[name];
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+    catch { return iso; }
+  }
+
+  function urlHost(u) {
+    try { return new URL(u).hostname.replace('www.', ''); } catch { return u.slice(0, 20); }
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function nowLocal() {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+
+  function toast(msg, type) {
+    type = type || 'info';
+    const icons = { success:'✓', error:'✕', info:'ℹ' };
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.innerHTML = '<span>' + icons[type] + '</span><span>' + msg + '</span>';
+    document.getElementById('toastWrap').appendChild(el);
+    setTimeout(function () {
+      el.style.transition = 'opacity 0.3s';
+      el.style.opacity = '0';
+      setTimeout(function () { el.remove(); }, 300);
+    }, 3500);
+  }
+
+  var selected = new Set();
+  function updateBulkBar() {
+    var bar = document.getElementById('bulkBar');
+    document.getElementById('bulkCount').textContent = selected.size + ' selected';
+    bar.classList.toggle('visible', selected.size > 0);
+  }
+
+  function clearSelection() {
+    selected.clear();
+    document.querySelectorAll('.row-cb').forEach(function (cb) { cb.checked = false; });
+    document.getElementById('selAll').checked = false;
+    document.querySelectorAll('#tbody tr').forEach(function (tr) { tr.classList.remove('sel'); });
+    updateBulkBar();
+  }
+
+  function renderTable(apps) {
+    var tbody  = document.getElementById('tbody');
+    var table  = document.getElementById('mainTable');
+    var empty  = document.getElementById('emptyState');
+
+    if (!apps || apps.length === 0) {
+      table.style.display = 'none';
+      empty.style.display = 'block';
+      document.getElementById('badge').textContent = '0 applications';
+      return;
+    }
+
+    empty.style.display = 'none';
+    table.style.display = 'table';
+    document.getElementById('badge').textContent = apps.length + ' application' + (apps.length !== 1 ? 's' : '');
+
+    var rows = '';
+    for (var i = 0; i < apps.length; i++) {
+      var app = apps[i];
+      var color = companyColor(app.company);
+      var dateStr = fmtDate(app.date_applied);
+      var hasResume = app.has_resume == 1 || app.has_resume === true;
+      var resumeName = app.resume_original_name || 'resume.pdf';
+
+      rows += '<tr id="row-' + app.id + '">';
+      rows += '<td><input type="checkbox" class="row-cb" data-id="' + app.id + '" /></td>';
+      rows += '<td class="cell-date">' + dateStr + '</td>';
+      rows += '<td class="cell-title" title="' + esc(app.job_title) + '">' + esc(app.job_title) + '</td>';
+      rows += '<td><div class="company-chip" title="' + esc(app.company) + '"><span class="dot" style="background:' + color + '"></span>' + esc(app.company) + '</div></td>';
+      var desc = app.job_description || '';
+      rows += '<td class="cell-desc" title="Click to expand" data-desc="' + esc(desc) + '">' + esc(desc || '—') + '</td>';
+      if (app.url) {
+        rows += '<td><a class="url-link" href="' + esc(app.url) + '" target="_blank" rel="noopener" title="' + esc(app.url) + '">';
+        rows += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+        rows += esc(urlHost(app.url)) + '</a></td>';
+      } else {
+        rows += '<td><span style="color:var(--text3)">—</span></td>';
+      }
+      if (hasResume) {
+        rows += '<td><button class="resume-btn" data-id="' + app.id + '" data-name="' + esc(resumeName) + '">';
+        rows += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+        rows += esc(resumeName.slice(0, 14)) + '</button></td>';
+      } else {
+        rows += '<td><span class="no-resume">No resume</span></td>';
+      }
+      rows += '</tr>';
+    }
+    tbody.innerHTML = rows;
+
+    // Attach checkbox listeners
+    tbody.querySelectorAll('.row-cb').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var id = parseInt(this.dataset.id);
+        if (this.checked) selected.add(id);
+        else selected.delete(id);
+        var row = document.getElementById('row-' + id);
+        if (row) row.classList.toggle('sel', this.checked);
+        updateBulkBar();
+      });
+    });
+
+    tbody.querySelectorAll('.resume-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openPdf(this.dataset.id, this.dataset.name);
+      });
+    });
+
+    tbody.querySelectorAll('.cell-desc').forEach(function(td) {
+      td.addEventListener('click', function() {
+        var text = this.dataset.desc;
+        if (text) openDesc(text);
+      });
+    });
+  }
+
+  function loadApplications() {
+    var sort = document.getElementById('sortSelect').value;
+    document.getElementById('loadingTxt').style.display = 'inline';
+    clearSelection();
+
+    fetch(API + '/applications?sort=' + sort)
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (apps) {
+        console.log('[LOAD] received', apps.length, 'rows:', apps);
+        renderTable(apps);
+      })
+      .catch(function (err) {
+        console.error('[LOAD ERROR]', err);
+        toast('Load failed: ' + err.message, 'error');
+      })
+      .finally(function () {
+        document.getElementById('loadingTxt').style.display = 'none';
+      });
+  }
+
+  function submitApplication() {
+    var title   = document.getElementById('f_title').value.trim();
+    var company = document.getElementById('f_company').value.trim();
+    if (!title || !company) { toast('Job Title and Company are required', 'error'); return; }
+
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    var fd = new FormData();
+    fd.append('job_title', title);
+    fd.append('company', company);
+    fd.append('job_description', document.getElementById('f_desc').value.trim());
+    fd.append('url', document.getElementById('f_url').value.trim());
+    var dv = document.getElementById('f_date').value;
+    fd.append('date_applied', dv ? new Date(dv).toISOString() : new Date().toISOString());
+    var rf = document.getElementById('f_resume').files[0];
+    if (rf) fd.append('resume', rf);
+
+    fetch(API + '/applications', { method: 'POST', body: fd })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.detail || data.error || 'Server error');
+          return data;
+        });
+      })
+      .then(function (data) {
+        console.log('[INSERT OK]', data);
+        toast('Application added!', 'success');
+        closeAddModal();
+        loadApplications();
+      })
+      .catch(function (err) {
+        console.error('[INSERT ERROR]', err);
+        toast('Error: ' + err.message, 'error');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Add Application';
+      });
+  }
+
+  function deleteSelected() {
+    if (!selected.size) return;
+    var ids = Array.from(selected);
+    if (!confirm('Delete ' + ids.length + ' application(s)? This cannot be undone.')) return;
+
+    fetch(API + '/applications/delete-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids })
+    })
+      .then(function (res) { if (!res.ok) throw new Error('Delete failed'); return res.json(); })
+      .then(function () { toast('Deleted ' + ids.length + ' application(s)', 'success'); clearSelection(); loadApplications(); })
+      .catch(function (err) { toast(err.message, 'error'); });
+  }
+
+  function openPdf(id, name) {
+    var url = API + '/applications/' + id + '/resume';
+    document.getElementById('pdfTitle').textContent = name;
+    document.getElementById('pdfFrame').src = url;
+    document.getElementById('pdfDownload').href = url;
+    document.getElementById('pdfDownload').download = name;
+    document.getElementById('pdfOverlay').classList.add('open');
+  }
+
+  function closePdf() {
+    document.getElementById('pdfOverlay').classList.remove('open');
+    document.getElementById('pdfFrame').src = '';
+  }
+
+  function openDesc(text) {
+    document.getElementById('descText').textContent = text;
+    document.getElementById('descOverlay').classList.add('open');
+  }
+
+  function closeDesc() {
+    document.getElementById('descOverlay').classList.remove('open');
+  }
+
+  function openAddModal() {
+    document.getElementById('f_title').value = '';
+    document.getElementById('f_company').value = '';
+    document.getElementById('f_date').value = nowLocal();
+    document.getElementById('f_url').value = '';
+    document.getElementById('f_desc').value = '';
+    document.getElementById('f_resume').value = '';
+    document.getElementById('fileChosen').style.display = 'none';
+    document.getElementById('addOverlay').classList.add('open');
+    setTimeout(function () { document.getElementById('f_title').focus(); }, 80);
+  }
+
+  function closeAddModal() {
+    document.getElementById('addOverlay').classList.remove('open');
+  }
+
+  document.getElementById('addBtn').addEventListener('click', openAddModal);
+  document.getElementById('addBtn2').addEventListener('click', openAddModal);
+  document.getElementById('closeAdd').addEventListener('click', closeAddModal);
+  document.getElementById('cancelAdd').addEventListener('click', closeAddModal);
+  document.getElementById('submitBtn').addEventListener('click', submitApplication);
+  document.getElementById('closePdf').addEventListener('click', closePdf);
+  document.getElementById('deleteBtn').addEventListener('click', deleteSelected);
+  document.getElementById('cancelSelBtn').addEventListener('click', clearSelection);
+  document.getElementById('closeDesc').addEventListener('click', closeDesc);
+  document.getElementById('descOverlay').addEventListener('click', function(e) { if (e.target === this) closeDesc(); });
+
+  document.getElementById('addOverlay').addEventListener('click', function (e) { if (e.target === this) closeAddModal(); });
+  document.getElementById('pdfOverlay').addEventListener('click', function (e) { if (e.target === this) closePdf(); });
+
+  document.getElementById('sortSelect').addEventListener('change', loadApplications);
+
+  document.getElementById('selAll').addEventListener('change', function () {
+    document.querySelectorAll('.row-cb').forEach(function (cb) {
+      cb.checked = document.getElementById('selAll').checked;
+      var id = parseInt(cb.dataset.id);
+      if (cb.checked) selected.add(id); else selected.delete(id);
+      var row = document.getElementById('row-' + id);
+      if (row) row.classList.toggle('sel', cb.checked);
+    });
+    updateBulkBar();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeAddModal(); closePdf(); closeDesc(); }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openAddModal(); }
+  });
+
+  // File pick
+  document.getElementById('f_resume').addEventListener('change', function () {
+    var f = this.files[0];
+    if (f) { document.getElementById('fileName').textContent = f.name; document.getElementById('fileChosen').style.display = 'flex'; }
+  });
+
+  var fileDrop = document.getElementById('fileDrop');
+  fileDrop.addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('over'); });
+  fileDrop.addEventListener('dragleave', function () { this.classList.remove('over'); });
+  fileDrop.addEventListener('drop', function (e) {
+    e.preventDefault(); this.classList.remove('over');
+    var f = e.dataTransfer.files[0];
+    if (f && f.type === 'application/pdf') {
+      document.getElementById('f_resume').files = e.dataTransfer.files;
+      document.getElementById('fileName').textContent = f.name;
+      document.getElementById('fileChosen').style.display = 'flex';
+    } else { toast('Please drop a PDF file', 'error'); }
+  });
+
+  // Initialize app
+  loadApplications();
+
+}());
+</script>
+</body>
+</html>
